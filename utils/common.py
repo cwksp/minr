@@ -12,8 +12,7 @@ from tensorboardX import SummaryWriter
 def ensure_path(path, replace=True):
     basename = osp.basename(path.rstrip('/'))
     if osp.exists(path):
-        if replace and (basename.startswith('_')
-                or input('{} exists, replace? (y/[n]): '.format(path)) == 'y'):
+        if replace and (basename.startswith('_') or input('{} exists, replace? (y/[n]): '.format(path)) == 'y'):
             shutil.rmtree(path)
             os.makedirs(path)
     else:

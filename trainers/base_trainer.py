@@ -1,5 +1,23 @@
+"""
+    run()
+        make_datasets()
+            . train_loader, test_loader, dist_samplers
+        make_model()
+            . model_ddp, model
+        train()
+            . optimizer, epoch, log_buffer
+            adjust_learning_rate()
+            train_epoch()
+                train_step()
+            evaluate_epoch()
+                evaluate_step()
+            visualize_epoch()
+            save_checkpoint()
+"""
+
 import os
 import os.path as osp
+import time
 
 import yaml
 import torch
@@ -93,10 +111,10 @@ class BaseTrainer():
         cfg = self.cfg
         self.dist_samplers = []
 
-        def make_distributed_loader(dataset, batch_size, shuffle=False):
-            sampler = DistributedSampler(dataset, drop_last=True, shuffle=shuffle) if self.distributed else None
+        def make_distributed_loader(dataset, batch_size, shuffle=False, drop_last=False):
+            sampler = DistributedSampler(dataset, shuffle=shuffle) if self.distributed else None
             loader = DataLoader(
-                dataset, batch_size // self.tot_gpus, drop_last=True,
+                dataset, batch_size // self.tot_gpus, drop_last=drop_last,
                 sampler=sampler, shuffle=((sampler is None) and shuffle),
                 num_workers=self.num_workers, pin_memory=True)
             return loader, sampler
@@ -104,14 +122,14 @@ class BaseTrainer():
         if cfg.get('train_dataset') is not None:
             train_dataset = datasets.make(cfg['train_dataset'])
             self.log(f'Train dataset: len={len(train_dataset)}')
-            self.train_loader, self.train_sampler = make_distributed_loader(train_dataset, cfg['batch_size'], shuffle=True)
-            self.dist_samplers.append(self.train_sampler)
+            self.train_loader, train_sampler = make_distributed_loader(train_dataset, cfg['batch_size'], shuffle=True, drop_last=True)
+            self.dist_samplers.append(train_sampler)
 
         if cfg.get('test_dataset') is not None:
             test_dataset = datasets.make(cfg['test_dataset'])
             self.log(f'Test dataset: len={len(test_dataset)}')
-            self.test_loader, self.test_sampler = make_distributed_loader(test_dataset, cfg['batch_size'], shuffle=False)
-            self.dist_samplers.append(self.test_sampler)
+            self.test_loader, test_sampler = make_distributed_loader(test_dataset, cfg['batch_size'], shuffle=False, drop_last=False)
+            self.dist_samplers.append(test_sampler)
 
     def make_model(self, model_spec=None):
         if model_spec is None:
@@ -119,6 +137,7 @@ class BaseTrainer():
         load_sd = (model_spec.get('sd') is not None)
         model = models.make(model_spec, load_sd=load_sd)
         self.log(f'Model: #params={utils.compute_num_params(model)}')
+
         if self.distributed:
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             model.cuda()
@@ -145,8 +164,12 @@ class BaseTrainer():
         if self.is_master:
             pbar = tqdm(pbar, desc='train', leave=False)
 
+        t1 = time.time()
         for data in pbar:
+            t0 = time.time()
+            self.t_data += t0 - t1
             ret = self.train_step(data)
+            self.t_model += time.time() - t0
 
             for k, v in ret.items():
                 if ave_scalars.get(k) is None:
@@ -155,6 +178,7 @@ class BaseTrainer():
 
             if self.is_master:
                 pbar.set_description(desc=f'train: loss={ret["loss"]:.4f}')
+            t1 = time.time()
 
         if self.distributed:
             self.sync_ave_scalars_(ave_scalars)
@@ -176,13 +200,19 @@ class BaseTrainer():
         if self.is_master:
             pbar = tqdm(pbar, desc='eval', leave=False)
 
+        t1 = time.time()
         for data in pbar:
+            t0 = time.time()
+            self.t_data += t0 - t1
             ret = self.evaluate_step(data)
+            self.t_model += time.time() - t0
 
             for k, v in ret.items():
                 if ave_scalars.get(k) is None:
                     ave_scalars[k] = utils.Averager()
                 ave_scalars[k].add(v, 1)
+
+            t1 = time.time()
 
         if self.distributed:
             self.sync_ave_scalars_(ave_scalars)
@@ -233,6 +263,7 @@ class BaseTrainer():
             self.adjust_learning_rate()
             self.log_temp_scalar('lr', self.optimizer.param_groups[0]['lr'])
 
+            self.t_data, self.t_model = 0, 0
             self.train_epoch()
 
             if epoch % eval_epoch == 0:
@@ -244,7 +275,9 @@ class BaseTrainer():
                 self.save_checkpoint(f'epoch-{epoch}.pth')
             self.save_checkpoint('epoch-last.pth')
 
-            self.log_buffer.append('{} {}/{}'.format(*epoch_timer.epoch_step()))
+            epoch_time, tot_time, est_time = epoch_timer.epoch_step()
+            data_ratio = self.t_data / (self.t_data + self.t_model)
+            self.log_buffer.append('{} (d {:.2f}) {}/{}'.format(epoch_time, data_ratio, tot_time, est_time))
             self.log(', '.join(self.log_buffer))
 
     def run(self):

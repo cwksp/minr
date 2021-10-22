@@ -86,6 +86,13 @@ class NVSTrainer(BaseTrainer):
             data[k] = t
 
     def train_step(self, data):
+        """
+            data:
+                support_rays_o, support_rays_d, support_imgs
+                query_rays_o, query_rays_d, query_imgs
+                near, far
+        }
+        """
         data = {k: v.cuda() for k, v in data.items()}
         self.sample_query_rays_(data, n_sample=self.cfg['n_sample_query_rays'], smart_sample=self.cfg.get('smart_sample', False))
 
@@ -156,7 +163,7 @@ class NVSTrainer(BaseTrainer):
             pred_support, pred_query,
             err_support, err_query], dim=1) # (B, (Ns + Nq) * 3, 3, H, W)
 
-        sep_line_rgb = [0.618, 0, 0]
+        sep_line_rgb = [0.5, 0, 0]
         sep_line_width = 2
         for i in range(3):
             visgrid[:, Ns, i, :, :sep_line_width] = sep_line_rgb[i]
