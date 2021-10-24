@@ -1,2 +1,2 @@
-from .trainers import trainers
+from .trainers import register, trainers
 from . import nvs_trainer
