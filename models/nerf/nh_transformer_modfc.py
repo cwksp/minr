@@ -11,7 +11,7 @@ from .base_nerf_hypernet import BaseNerfHypernet
 @register('nh-transformer_modfc')
 class NHTransformerModfc(BaseNerfHypernet):
 
-    def __init__(self, patch_size, d_model, nhead, dim_feedforward, dropout, num_layers, n_groups, use_viewdirs):
+    def __init__(self, patch_size, d_model, nhead, dim_feedforward, dropout, num_layers, n_groups, use_viewdirs, num_modfc):
         super().__init__(use_viewdirs=use_viewdirs)
         self.patch_size = patch_size
         img_channels = 3
@@ -41,10 +41,13 @@ class NHTransformerModfc(BaseNerfHypernet):
             self.register_parameter(f'base_params_{name}', p)
 
         # Define modulate vectors
+        self.num_modfc = num_modfc
         self.ptoken_rng = dict()
         self.ptoken_postfc = nn.ModuleDict()
         n_ptokens = 0
         for name, shape in self.hyponet.params_shape.items():
+            if name == 'wb_rgbsigma' or int(name[-1]) >= self.num_modfc:
+                continue
             g = min(n_groups, shape[1]) # group or all
             assert shape[1] % g == 0
             self.ptoken_postfc[name] = nn.Linear(d_model, shape[0] - 1)
@@ -78,14 +81,18 @@ class NHTransformerModfc(BaseNerfHypernet):
         # Translate to params
         params = dict()
         for name, shape in self.hyponet.params_shape.items():
-            ql, qr = self.ptoken_rng[name]
-            x = self.ptoken_postfc[name](outp[ql: qr]) # (g, B, (shape[0] - 1)); g = min(shape[1], n_groups)
-            x = x.permute(1, 2, 0) # (B, (shape[0] - 1), g)
-
             wb = self.base_params[name].unsqueeze(0).expand(B, -1, -1)
-            w, b = wb[:, :-1, :], wb[:, -1:, :]
-            w = F.normalize(w * x.repeat(1, 1, w.shape[2] // x.shape[2]), dim=1)
-            wb = torch.cat([w, b], dim=1)
+
+            if name == 'wb_rgbsigma' or int(name[-1]) >= self.num_modfc:
+                pass
+            else:
+                ql, qr = self.ptoken_rng[name]
+                x = self.ptoken_postfc[name](outp[ql: qr]) # (g, B, (shape[0] - 1)); g = min(shape[1], n_groups)
+                x = x.permute(1, 2, 0) # (B, (shape[0] - 1), g)
+                w, b = wb[:, :-1, :], wb[:, -1:, :]
+                w = F.normalize(w * x.repeat(1, 1, w.shape[2] // x.shape[2]), dim=1)
+                wb = torch.cat([w, b], dim=1)
+
             params[name] = wb
 
         return params
