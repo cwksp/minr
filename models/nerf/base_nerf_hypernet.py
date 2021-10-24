@@ -126,7 +126,7 @@ class BaseNerfHypernet(nn.Module):
     def __init__(self, use_viewdirs):
         super().__init__()
         self.use_viewdirs = use_viewdirs
-        self.hypo_nerf = HypoNeRF(use_viewdirs=use_viewdirs)
+        self.hyponet = HypoNeRF(use_viewdirs=use_viewdirs)
 
     def generate_params(self, rays_o, rays_d, imgs):
         raise NotImplementedError
@@ -139,8 +139,9 @@ class BaseNerfHypernet(nn.Module):
         q_rays_o, q_rays_d = data['query_rays_o'], data['query_rays_d']
 
         if mode == 'default':
-            pred = utils.render_rays(self.hypo_nerf, q_rays_o, q_rays_d, params=params,
+            pred = utils.render_rays(self.hyponet, q_rays_o, q_rays_d, params=params,
                                      near=float(data['near'][0]), far=float(data['far'][0]), use_viewdirs=self.use_viewdirs)
+
         elif mode == 'batched_rendering':
             B = q_rays_o.shape[0]
             query_shape = q_rays_o.shape[1: -1]
@@ -154,7 +155,7 @@ class BaseNerfHypernet(nn.Module):
                 qr = min(ql + bs_rays, tot_rays)
                 rays_o = q_rays_o[:, ql: qr, :].contiguous()
                 rays_d = q_rays_d[:, ql: qr, :].contiguous()
-                cur = utils.render_rays(self.hypo_nerf, rays_o, rays_d, params=params,
+                cur = utils.render_rays(self.hyponet, rays_o, rays_d, params=params,
                                         near=float(data['near'][0]), far=float(data['far'][0]), use_viewdirs=self.use_viewdirs)
                 pred.append(cur)
                 ql = qr

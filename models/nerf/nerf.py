@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .models import register
+from models import register
 
 
 @register('nerf')

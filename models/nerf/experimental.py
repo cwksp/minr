@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -73,9 +75,10 @@ class NHTransLearner(BaseNerfHypernet):
         self.trans_fc = nn.ModuleDict()
         self.wt_crs_att = nn.ModuleDict()
         self.wt_ff = nn.ModuleDict()
-        for name, shape in self.hypo_nerf.params_shape.items():
+        for name, shape in self.hyponet.params_shape.items():
             n, d = shape[1], shape[0]
-            self.wt_init[name] = nn.Parameter(torch.randn(n, d))
+            self.wt_init[name] = nn.Parameter(torch.empty(n, d))
+            nn.init.kaiming_uniform_(self.wt_init[name], a=math.sqrt(5))
             self.wt_norm[name] = nn.LayerNorm(d)
             self.wt_self_att[name] = nn.ModuleList([Attention(d, n_heads // 2, head_dim // 2, dropout=dropout) for _ in range(n_steps)])
             self.trans_fc[name] = nn.ModuleList([nn.Linear(imgt_dim, d) for _ in range(n_steps)])
@@ -105,13 +108,13 @@ class NHTransLearner(BaseNerfHypernet):
 
         # Trans learner line
         params = dict()
-        for name, shape in self.hypo_nerf.params_shape.items():
+        for name, shape in self.hyponet.params_shape.items():
             fr = self.wt_init[name].unsqueeze(0).expand(B, -1, -1)
-            params[name] = fr.transpose(-1, -2); continue
+            #params[name] = fr.transpose(-1, -2); continue
             norm = self.wt_norm[name]
             for i in range(self.n_steps):
                 _ = norm(fr); fr = fr + self.wt_self_att[name][i](_, _)
-                to = self.trans_fc[name][i](imgt_res[i])
+                to = self.trans_fc[name][i](imgt_res[i]) ## [i]
                 fr = fr + self.wt_crs_att[name][i](norm(fr), norm(to))
                 fr = fr + self.wt_ff[name][i](norm(fr))
             params[name] = fr.transpose(-1, -2)

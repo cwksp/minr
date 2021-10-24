@@ -27,7 +27,7 @@ class NHTransformerModfc(BaseNerfHypernet):
 
         # Base params
         self.base_params = dict()
-        for name, shape in self.hypo_nerf.params_shape.items():
+        for name, shape in self.hyponet.params_shape.items():
             weight = torch.empty(shape[1], shape[0] - 1)
             nn.init.kaiming_uniform_(weight, a=math.sqrt(5))
 
@@ -44,7 +44,7 @@ class NHTransformerModfc(BaseNerfHypernet):
         self.ptoken_rng = dict()
         self.ptoken_postfc = nn.ModuleDict()
         n_ptokens = 0
-        for name, shape in self.hypo_nerf.params_shape.items():
+        for name, shape in self.hyponet.params_shape.items():
             g = min(n_groups, shape[1]) # group or all
             assert shape[1] % g == 0
             self.ptoken_postfc[name] = nn.Linear(d_model, shape[0] - 1)
@@ -77,7 +77,7 @@ class NHTransformerModfc(BaseNerfHypernet):
 
         # Translate to params
         params = dict()
-        for name, shape in self.hypo_nerf.params_shape.items():
+        for name, shape in self.hyponet.params_shape.items():
             ql, qr = self.ptoken_rng[name]
             x = self.ptoken_postfc[name](outp[ql: qr]) # (g, B, (shape[0] - 1)); g = min(shape[1], n_groups)
             x = x.permute(1, 2, 0) # (B, (shape[0] - 1), g)

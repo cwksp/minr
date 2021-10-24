@@ -1,3 +1,3 @@
 from .datasets import register, make
-from . import learnit_shapenet
-from . import pixelnerf_srn_shapenet
+from . import celeba
+from . import learnit_shapenet, pixelnerf_srn_shapenet

@@ -6,7 +6,7 @@ import imageio
 import numpy as np
 from torchvision import transforms
 
-from .datasets import register
+from datasets import register
 
 
 def get_image_to_tensor_balanced(image_size=0):

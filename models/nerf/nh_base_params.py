@@ -13,7 +13,7 @@ class NHBaseParams(BaseNerfHypernet):
     def __init__(self, use_viewdirs):
         super().__init__(use_viewdirs=use_viewdirs)
         self.base_params = dict()
-        for name, shape in self.hypo_nerf.params_shape.items():
+        for name, shape in self.hyponet.params_shape.items():
             weight = torch.empty(shape[1], shape[0] - 1)
             nn.init.kaiming_uniform_(weight, a=math.sqrt(5))
 

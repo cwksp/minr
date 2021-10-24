@@ -9,8 +9,8 @@ import torchvision
 import wandb
 from torchvision import transforms
 
+from trainers import register
 from .base_trainer import BaseTrainer
-from .trainers import register
 
 
 @register('nvs_trainer')
