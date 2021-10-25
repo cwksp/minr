@@ -2,13 +2,17 @@ import torch
 import torch.nn as nn
 
 from models.siren import HypoSiren
+from models.pe_mlp import HypoPeMlp
 
 
 class BaseImgrecHypernet(nn.Module):
 
-    def __init__(self, w0):
+    def __init__(self, hyponet_name):
         super().__init__()
-        self.hyponet = HypoSiren(w0=w0)
+        if hyponet_name == 'siren':
+            self.hyponet = HypoSiren()
+        elif hyponet_name == 'pe_mlp':
+            self.hyponet = HypoPeMlp()
 
     def generate_params(self, imgs):
         raise NotImplementedError
