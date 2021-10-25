@@ -1,7 +1,7 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 
 class SirenLayer(nn.Module):
@@ -50,3 +50,33 @@ class SirenModel(nn.Module):
         x = self.layers[-1](x)
         out = x.view(*in_shp, 3)
         return out
+
+
+class HypoSiren(nn.Module):
+
+    def __init__(self, depth=5, hidden_dim=256, w0=200):
+        super().__init__()
+        self.params_shape = dict()
+        self.depth = depth
+        self.w0 = w0
+        last = 2
+        for i in range(depth):
+            cur = hidden_dim if i < depth - 1 else 3
+            self.params_shape[f'wb{i}'] = (last + 1, cur) # + 1 for bias
+            last = cur
+
+    def forward(self, coords, params):
+        device = coords.device
+        B, query_shape = coords.shape[0], coords.shape[1: -1]
+
+        x = coords.view(B, -1, 2)
+        for i in range(self.depth):
+            one = torch.tensor([1.], dtype=torch.float32, device=device).view(1, 1, 1).expand(B, x.shape[1], 1)
+            x = torch.bmm(torch.cat([x, one], dim=-1), params[f'wb{i}'])
+            if i < self.depth - 1:
+                x = torch.sin(self.w0 * x)
+            else:
+                x = x + .5
+
+        x = x.view(B, *query_shape, 3)
+        return x

@@ -59,14 +59,14 @@ def unproj_map(width, height, f, c=None, device="cpu"):
     return unproj
 
 
-@register('pixelnerf_srn_shapenet')
-class PixelNerfSrnShapenet(torch.utils.data.Dataset):
+@register('pixelnerfsrn_shapenet')
+class PixelnerfsrnShapenet(torch.utils.data.Dataset):
     """
     Dataset from SRN (V. Sitzmann et al. 2020)
     """
 
     def __init__(
-        self, path, stage, n_support_views, n_query_views, image_size=(128, 128), world_scale=1.0,
+        self, root_path, split, n_support_views, n_query_views, image_size=(128, 128), world_scale=1.0,
         truncate=None, repeat=1, views_rng=None,
     ):
         """
@@ -75,8 +75,9 @@ class PixelNerfSrnShapenet(torch.utils.data.Dataset):
         :param world_scale amount to scale entire world by
         """
         super().__init__()
-        self.base_path = path + "_" + stage
-        self.dataset_name = os.path.basename(path)
+        stage = split
+        self.base_path = root_path + "_" + stage
+        self.dataset_name = os.path.basename(root_path)
 
         print("Loading SRN dataset", self.base_path, "name:", self.dataset_name)
         self.stage = stage

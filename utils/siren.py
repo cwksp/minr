@@ -1,7 +1,7 @@
 import torch
 
 
-def make_coord(shape, ranges=None, flatten=True):
+def make_coord(shape, ranges=None, flatten=False):
     """ Make coordinates at grid centers.
     """
     coord_seqs = []

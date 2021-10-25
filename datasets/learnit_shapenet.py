@@ -15,7 +15,7 @@ from utils import get_rays_batch
 
 
 @register('learnit_shapenet')
-class LearnitShapeNet(Dataset):
+class LearnitShapenet(Dataset):
 
     def __init__(self, root_path, split_file, split, n_support_views, n_query_views,
                  truncate=None, repeat=1, views_rng=None):

@@ -4,14 +4,14 @@ import torch
 import torch.nn as nn
 
 from models import register
-from .base_nerf_hypernet import BaseNerfHypernet
+from .base_nvs_hypernet import BaseNvsHypernet
 
 
-@register('nh-base_params')
-class NHBaseParams(BaseNerfHypernet):
+@register('nvsh-base_params')
+class NvshBaseParams(BaseNvsHypernet):
 
     def __init__(self, use_viewdirs):
-        super().__init__(use_viewdirs=use_viewdirs)
+        super().__init__(use_viewdirs)
         self.base_params = dict()
         for name, shape in self.hyponet.params_shape.items():
             weight = torch.empty(shape[1], shape[0] - 1)

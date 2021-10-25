@@ -3,14 +3,14 @@ import torch
 import torch.nn as nn
 
 from models import register
-from .base_siren_hypernet import BaseSirenHypernet
+from .base_imgrec_hypernet import BaseImgrecHypernet
 
 
-@register('sh-base_params')
-class SHBaseParams(BaseSirenHypernet):
+@register('imgrech-base_params')
+class ImgrechBaseParams(BaseImgrecHypernet):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, w0):
+        super().__init__(w0)
         self.base_params = dict()
         for name, shape in self.hyponet.params_shape.items():
             in_f, out_f = shape[0] - 1, shape[1]

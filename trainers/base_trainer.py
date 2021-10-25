@@ -6,13 +6,14 @@
             . model_ddp, model
         train()
             . optimizer, epoch, log_buffer
-            adjust_learning_rate()
-            train_epoch()
-                train_step()
-            evaluate_epoch()
-                evaluate_step()
-            visualize_epoch()
-            save_checkpoint()
+            for range(max_epoch):
+                adjust_learning_rate()
+                train_epoch()
+                    train_step()
+                evaluate_epoch()
+                    evaluate_step()
+                visualize_epoch()
+                save_checkpoint()
 """
 
 import os

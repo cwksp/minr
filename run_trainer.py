@@ -1,7 +1,4 @@
-"""
-    1. Generates a cfg dict from args and a given cfg file.
-    2. Run (distributed) Trainer with the cfg dict.
-"""
+""" Generates a cfg and spawn Trainer(rank, cfg). """
 
 import argparse
 import os
