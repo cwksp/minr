@@ -1,1 +1,1 @@
-from . import ttp_modfc
+from . import ttp_modfc, ttp_whole

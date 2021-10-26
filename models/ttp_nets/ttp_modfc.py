@@ -51,7 +51,7 @@ class TtpModfc(nn.Module):
 
     def forward(self, x):
         """
-            x: shape (B, L, dtoken_dim)
+            x: (B, L, dtoken_dim)
         """
         B = x.shape[0]
 

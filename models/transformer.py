@@ -2,22 +2,6 @@ import torch
 import torch.nn as nn
 
 
-class FeedForward(nn.Module):
-
-    def __init__(self, dim, ff_hidden_dim, dropout=0.):
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(dim, ff_hidden_dim),
-            nn.GELU(),
-            nn.Dropout(dropout),
-            nn.Linear(ff_hidden_dim, dim),
-            nn.Dropout(dropout)
-        )
-
-    def forward(self, x):
-        return self.net(x)
-
-
 class Attention(nn.Module):
 
     def __init__(self, dim, n_heads, head_dim, dropout=0.):
@@ -50,6 +34,22 @@ class Attention(nn.Module):
         return self.to_out(out)
 
 
+class FeedForward(nn.Module):
+
+    def __init__(self, dim, ff_hidden_dim, dropout=0.):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(dim, ff_hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(ff_hidden_dim, dim),
+            nn.Dropout(dropout)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
 class TransformerEncoder(nn.Module):
 
     def __init__(self, dim, n_layers, n_heads, head_dim, ff_hidden_dim, dropout=0.):
@@ -63,6 +63,28 @@ class TransformerEncoder(nn.Module):
         for i in range(self.n_layers):
             y = self.norm(x)
             x = x + self.attns[i](y, y)
+            y = self.norm(x)
+            x = x + self.ffs[i](y)
+        return x
+
+
+class TransformerDecoder(nn.Module):
+
+    def __init__(self, dim, n_layers, n_heads, head_dim, ff_hidden_dim, dropout=0.):
+        super().__init__()
+        self.n_layers = n_layers
+        self.norm = nn.LayerNorm(dim)
+        self.attns = nn.ModuleList([Attention(dim, n_heads, head_dim, dropout=dropout) for _ in range(n_layers)])
+        self.crs_attns = nn.ModuleList([Attention(dim, n_heads, head_dim, dropout=dropout) for _ in range(n_layers)])
+        self.ffs = nn.ModuleList([FeedForward(dim, ff_hidden_dim, dropout=dropout) for _ in range(n_layers)])
+
+    def forward(self, x, cond):
+        cond = self.norm(cond)
+        for i in range(self.n_layers):
+            y = self.norm(x)
+            x = x + self.attns[i](y, y)
+            y = self.norm(x)
+            x = x + self.crs_attns[i](y, cond)
             y = self.norm(x)
             x = x + self.ffs[i](y)
         return x

@@ -11,13 +11,21 @@ from utils import make_coord
 
 @register('celeba')
 class Celeba(torch.utils.data.Dataset):
+    """
+        Given a support image, query INR-image.
+
+        Item:
+            support_img: (3, input_size, input_size)
+            query_coord: (gt_size, gt_size, 2)
+            gt: (gt_size, gt_size, 3)
+    """
 
     def __init__(self, root_path, split, input_size, truncate=None, repeat=1):
         partition_csv = pandas.read_csv(osp.join(root_path, 'list_eval_partition.csv'))
         split_id = {'train': 0, 'val': 1, 'test': 2}[split]
         img_names = partition_csv[partition_csv['partition'] == split_id]['image_id']
         self.paths = [osp.join(root_path, 'img_align_celeba', 'img_align_celeba', _) for _ in img_names]
-        self.center_size = 178
+        self.gt_size = 178
         self.input_transform = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize(input_size),
@@ -33,10 +41,10 @@ class Celeba(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         idx %= len(self.paths)
         x = transforms.ToTensor()(Image.open(self.paths[idx]))
-        R = self.center_size // 2
+        R = self.gt_size // 2
         x = x[:, x.shape[1] // 2 - R: x.shape[1] // 2 + R, x.shape[2] // 2 - R: x.shape[2] // 2 + R]
         return {
-            'support_imgs': self.input_transform(x),
-            'query_coords': make_coord((x.shape[1], x.shape[2]), flatten=False),
+            'support_img': self.input_transform(x),
+            'query_coord': make_coord((x.shape[1], x.shape[2]), flatten=False),
             'gt': x.permute(1, 2, 0),
         }

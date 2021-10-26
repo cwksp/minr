@@ -57,8 +57,8 @@ class ImgrecTrainer(BaseTrainer):
     def train_step(self, data):
         """
             data:
-                support_imgs
-                query_coords
+                support_img
+                query_coord
                 gt
         }
         """

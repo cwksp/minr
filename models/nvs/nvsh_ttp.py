@@ -15,7 +15,7 @@ class NvshTtp(BaseNvsHypernet):
         self.patch_size = patch_size
         self.prefc = nn.Linear(patch_size**2 * 9, dtoken_dim)
         # self.pos_emb = nn.Parameter(torch.randn(1, (input_size // patch_size)**2, dtoken_dim))
-        self.params_generator = models.make(ttp_net_spec, args={'dtoken_dim': dtoken_dim, 'hyponet': self.hyponet})
+        self.ttp_net = models.make(ttp_net_spec, args={'dtoken_dim': dtoken_dim, 'hyponet': self.hyponet})
 
     def generate_params(self, rays_o, rays_d, imgs):
         B, N, _, H, W = imgs.shape
@@ -27,5 +27,5 @@ class NvshTtp(BaseNvsHypernet):
         x = x.permute(0, 2, 1).contiguous().view(B, N * (H // P) * (W // P), -1)
         x = self.prefc(x)
         # x = x + self.pos_emb.repeat(1, N, 1)
-        params = self.params_generator(x)
+        params = self.ttp_net(x)
         return params
