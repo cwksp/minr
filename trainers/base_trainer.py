@@ -281,8 +281,6 @@ class BaseTrainer():
             self.log_buffer.append('{} (d {:.2f}) {}/{}'.format(epoch_time, data_ratio, tot_time, est_time))
             self.log(', '.join(self.log_buffer))
 
-            from IPython import embed; embed()
-
     def run(self):
         self.make_datasets()
 
