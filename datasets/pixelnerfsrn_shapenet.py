@@ -218,14 +218,15 @@ class PixelnerfsrnShapenet(torch.utils.data.Dataset):
             all_poses[:, None, None, :3, :3], cam_unproj_map.unsqueeze(-1)
         )[:, :, :, :, 0]
         ns = self.n_support_views
+        scale = 0.5
         ret = {
             'support_imgs': all_imgs[:ns],
-            'support_rays_o': cam_centers[:ns],
+            'support_rays_o': cam_centers[:ns] * scale,
             'support_rays_d': cam_raydir[:ns],
             'query_imgs': all_imgs[ns:],
-            'query_rays_o': cam_centers[ns:],
+            'query_rays_o': cam_centers[ns:] * scale,
             'query_rays_d': cam_raydir[ns:],
-            'near': torch.tensor(self.z_near, dtype=torch.float32),
-            'far': torch.tensor(self.z_far, dtype=torch.float32),
+            'near': torch.tensor(self.z_near, dtype=torch.float32) * scale,
+            'far': torch.tensor(self.z_far, dtype=torch.float32) * scale,
         }
         return ret
