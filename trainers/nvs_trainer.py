@@ -37,6 +37,8 @@ class NVSTrainer(BaseTrainer):
                 ret[k].append(v)
         for k, v in ret.items():
             ret[k] = torch.stack(v)
+            if k in ['query_rays_o', 'query_rays_d', 'query_imgs']:
+                ret[k] = ret[k][:, :min(ret[k].shape[1], 4), ...] ## visualize limit of query
         return ret
 
     def make_datasets(self):
@@ -160,7 +162,7 @@ class NVSTrainer(BaseTrainer):
 
         visgrid = torch.cat([
             data['support_imgs'], query_imgs,
-            pred_support, pred_query,
+            pred_support.clamp(0, 1), pred_query.clamp(0, 1),
             err_support, err_query], dim=1) # (B, (Ns + Nq) * 3, 3, H, W)
 
         sep_line_rgb = [0.5, 0, 0]
