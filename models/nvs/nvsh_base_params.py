@@ -10,17 +10,13 @@ from .base_nvs_hypernet import BaseNvsHypernet
 @register('nvsh-base_params')
 class NvshBaseParams(BaseNvsHypernet):
 
-    def __init__(self, use_viewdirs):
-        super().__init__(use_viewdirs)
+    def __init__(self, hyponet_spec):
+        super().__init__(hyponet_spec)
         self.base_params = dict()
         for name, shape in self.hyponet.params_shape.items():
-            weight = torch.empty(shape[1], shape[0] - 1)
-            nn.init.kaiming_uniform_(weight, a=math.sqrt(5))
-
-            bias = torch.empty(shape[1], 1)
-            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(weight)
-            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-            nn.init.uniform_(bias, -bound, bound)
+            l = nn.Linear(shape[0] - 1, shape[1])
+            weight = l.weight.data.clone()
+            bias = l.bias.data.unsqueeze(-1).clone()
 
             p = nn.Parameter(torch.cat([weight, bias], dim=1).t().detach())
             self.base_params[name] = p

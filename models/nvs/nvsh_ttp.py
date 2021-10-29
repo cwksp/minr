@@ -10,8 +10,8 @@ from .base_nvs_hypernet import BaseNvsHypernet
 @register('nvsh-ttp')
 class NvshTtp(BaseNvsHypernet):
 
-    def __init__(self, input_size, patch_size, dtoken_dim, use_viewdirs, ttp_net_spec):
-        super().__init__(use_viewdirs)
+    def __init__(self, input_size, patch_size, dtoken_dim, hyponet_spec, ttp_net_spec):
+        super().__init__(hyponet_spec)
         self.patch_size = patch_size
         self.prefc = nn.Linear(patch_size**2 * 9, dtoken_dim)
         # self.pos_emb = nn.Parameter(torch.randn(1, (input_size // patch_size)**2, dtoken_dim))
@@ -27,5 +27,34 @@ class NvshTtp(BaseNvsHypernet):
         x = x.permute(0, 2, 1).contiguous().view(B, N * (H // P) * (W // P), -1)
         x = self.prefc(x)
         # x = x + self.pos_emb.repeat(1, N, 1)
+        params = self.ttp_net(x)
+        return params
+
+
+@register('nvsh-ttp_camtoken')
+class NvshTtpCamtoken(BaseNvsHypernet):
+
+    def __init__(self, input_size, patch_size, dtoken_dim, n_camtokens, hyponet_spec, ttp_net_spec):
+        super().__init__(hyponet_spec)
+        self.dtoken_dim = dtoken_dim
+        self.n_camtokens = n_camtokens
+        self.patch_size = patch_size
+        self.prefc = nn.Linear(patch_size**2 * 3, dtoken_dim)
+        self.pos_emb = nn.Parameter(torch.randn(1, (input_size // patch_size)**2, dtoken_dim))
+        self.cam_fc = nn.Linear(6, dtoken_dim * n_camtokens)
+        self.ttp_net = models.make(ttp_net_spec, args={'dtoken_dim': dtoken_dim, 'hyponet': self.hyponet})
+
+    def generate_params(self, rays_o, rays_d, imgs):
+        B, N, _, H, W = imgs.shape
+        assert N == 1
+        P = self.patch_size
+        x = F.unfold(imgs.view(B, 3, H, W), P, stride=P).permute(0, 2, 1).contiguous() # (B, (H // P) * (W // P), P * P * 3)
+        x = self.prefc(x) + self.pos_emb
+
+        ch, cw = H // 2, W // 2
+        cam = torch.cat([rays_o[:, 0, ch, cw, :], rays_d[:, 0, ch, cw, :]], dim=-1)
+        camtokens = self.cam_fc(cam).view(B, self.n_camtokens, self.dtoken_dim) # (B, n_camtokens, dtoken_dim)
+        x = torch.cat([x, camtokens], dim=1)
+
         params = self.ttp_net(x)
         return params

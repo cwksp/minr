@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 import utils
 from models.nerf import HypoNeRF
+from models.pe_mlp import HypoPeMlp
 
 
 def finetune_on_support(init_params, imgs, rays_o, rays_d, n_iter, near, far, use_viewdirs, batch_size=1024):
@@ -48,10 +49,13 @@ def finetune_on_support(init_params, imgs, rays_o, rays_d, n_iter, near, far, us
 
 class BaseNvsHypernet(nn.Module):
 
-    def __init__(self, use_viewdirs):
+    def __init__(self, hyponet_spec):
         super().__init__()
-        self.use_viewdirs = use_viewdirs
-        self.hyponet = HypoNeRF(use_viewdirs=use_viewdirs)
+        self.hyponet_name = hyponet_spec['name']
+        self.hyponet = {
+            'nerf': HypoNeRF,
+            'pe_mlp': HypoPeMlp,
+        }[self.hyponet_name](**hyponet_spec['args'])
 
     def generate_params(self, rays_o, rays_d, imgs):
         raise NotImplementedError
@@ -63,8 +67,11 @@ class BaseNvsHypernet(nn.Module):
         q_rays_o, q_rays_d = data['query_rays_o'], data['query_rays_d']
 
         if mode == 'default':
-            pred = utils.render_rays(self.hyponet, q_rays_o, q_rays_d, params=params,
-                                     near=float(data['near'][0]), far=float(data['far'][0]), use_viewdirs=self.use_viewdirs)
+            if self.hyponet_name == 'nerf':
+                pred = utils.render_rays(self.hyponet, q_rays_o, q_rays_d, params=params,
+                                        near=float(data['near'][0]), far=float(data['far'][0]), use_viewdirs=self.hyponet.use_viewdirs)
+            elif self.hyponet_name == 'pe_mlp':
+                pred = self.hyponet(torch.cat([q_rays_o, q_rays_d], dim=-1), params)
 
         elif mode == 'batched_rendering':
             B = q_rays_o.shape[0]
@@ -79,8 +86,11 @@ class BaseNvsHypernet(nn.Module):
                 qr = min(ql + bs_rays, tot_rays)
                 rays_o = q_rays_o[:, ql: qr, :].contiguous()
                 rays_d = q_rays_d[:, ql: qr, :].contiguous()
-                cur = utils.render_rays(self.hyponet, rays_o, rays_d, params=params,
-                                        near=float(data['near'][0]), far=float(data['far'][0]), use_viewdirs=self.use_viewdirs)
+                if self.hyponet_name == 'nerf':
+                    cur = utils.render_rays(self.hyponet, rays_o, rays_d, params=params,
+                                            near=float(data['near'][0]), far=float(data['far'][0]), use_viewdirs=self.hyponet.use_viewdirs)
+                elif self.hyponet_name == 'pe_mlp':
+                    cur = self.hyponet(torch.cat([rays_o, rays_d], dim=-1), params)
                 pred.append(cur)
                 ql = qr
             pred = torch.cat(pred, dim=1).view(B, *query_shape, 3)
