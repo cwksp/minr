@@ -12,9 +12,11 @@ class ImgrechNetTtp(BaseImgrecHypernet):
 
     def __init__(self, input_size, patch_size, dtoken_dim, hyponet_name, ttp_net_spec):
         super().__init__(hyponet_name)
+        if isinstance(input_size, int):
+            input_size = [input_size, input_size]
         self.patch_size = patch_size
         self.prefc = nn.Linear(patch_size**2 * 3, dtoken_dim)
-        self.pos_emb = nn.Parameter(torch.randn(1, (input_size // patch_size)**2, dtoken_dim))
+        self.pos_emb = nn.Parameter(torch.randn(1, (input_size[0] // patch_size) * (input_size[1] // patch_size), dtoken_dim))
         self.ttp_net = models.make(ttp_net_spec, args={'dtoken_dim': dtoken_dim, 'hyponet': self.hyponet})
         # self.adjust_k = nn.ParameterDict()
         # for name, shape in self.hyponet.params_shape.items():

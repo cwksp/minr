@@ -1,6 +1,24 @@
 import torch
 
 
+def make_coord(shape, ranges=None, flatten=False):
+    """ Make coordinates at grid centers.
+    """
+    coord_seqs = []
+    for i, n in enumerate(shape):
+        if ranges is None:
+            v0, v1 = -1, 1
+        else:
+            v0, v1 = ranges[i]
+        r = (v1 - v0) / (2 * n)
+        seq = v0 + r + (2 * r) * torch.arange(n).float()
+        coord_seqs.append(seq)
+    ret = torch.stack(torch.meshgrid(*coord_seqs, indexing='ij'), dim=-1)
+    if flatten:
+        ret = ret.view(-1, ret.shape[-1])
+    return ret
+
+
 def get_rays_batch(h, w, f, poses):
     """
     Args:
@@ -10,7 +28,7 @@ def get_rays_batch(h, w, f, poses):
         rays_o, rays_d: shape (n, h, w, 3)
     """
     n = poses.shape[0]
-    yv, xv = torch.meshgrid(torch.arange(h).float(), torch.arange(w).float())
+    yv, xv = torch.meshgrid(torch.arange(h).float(), torch.arange(w).float(), indexing='ij')
     xv, yv = xv + .5, yv + .5 ## not ori, but why dont we want centering
     dirs = torch.stack([(xv - w / 2) / f, -(yv - h / 2) / f, -torch.ones(h, w)], dim=-1) # (h, w, 3)
     rays_d = (dirs.view(1, h, w, 1, 3) * poses[:, :, :3].view(n, 1, 1, 3, 3)).sum(dim=-1)

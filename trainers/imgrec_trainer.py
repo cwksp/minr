@@ -11,7 +11,6 @@ from torchvision import transforms
 
 from trainers import register
 from .base_trainer import BaseTrainer
-from utils.siren import make_coord
 
 
 @register('imgrec_trainer')
