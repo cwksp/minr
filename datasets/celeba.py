@@ -49,7 +49,7 @@ class Celeba(torch.utils.data.Dataset):
 
         x = self.input_transform(gt)
         if self.input_crop == 'center':
-            R = x.shape[1] // 2
+            R = x.shape[1] // 4
             x = x[:, x.shape[1] // 2 - R: x.shape[1] // 2 + R, x.shape[2] // 2 - R: x.shape[2] // 2 + R]
         elif self.input_crop == 'top':
             x = x[:, :x.shape[1] // 2, :]
