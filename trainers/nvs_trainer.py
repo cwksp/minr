@@ -67,7 +67,8 @@ class NVSTrainer(BaseTrainer):
         data['query_gts'] = data['query_imgs'].permute(0, 1, 3, 4, 2).contiguous().view(B, N * H * W, 3)
 
         if not smart_sample:
-            inds = [np.random.choice(N * H * W, n_sample, replace=False) for _ in range(B)]
+            inds = np.random.choice(N * H * W, n_sample, replace=False)
+            # inds = [np.random.choice(N * H * W, n_sample, replace=False) for _ in range(B)]
         else:
             # Smart sample: half of GTs are foreground
             inds = []
@@ -82,10 +83,11 @@ class NVSTrainer(BaseTrainer):
                 inds.append(np.concatenate([fg, rd], axis=0))
 
         for k in ['query_rays_o', 'query_rays_d', 'query_gts']:
-            t = torch.empty(B, n_sample, 3, device=data[k].device)
-            for i in range(B):
-                t[i] = data[k][i][inds[i], :]
-            data[k] = t
+            data[k] = data[k][:, inds, :]
+            # t = torch.empty(B, n_sample, 3, device=data[k].device)
+            # for i in range(B):
+            #     t[i] = data[k][i][inds[i], :]
+            # data[k] = t
 
     def train_step(self, data):
         """
